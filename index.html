@@ -37,7 +37,7 @@
       <input type="email" id="admin-email" placeholder="Admin Email" required>
       <input type="password" id="admin-password" placeholder="Password" required>
       <button onclick="loginAdmin()">Secure Login</button>
-      <p id="error-msg" style="color: red; font-size: 14px;"></p>
+      <p id="error-msg" style="color: red; font-size: 14px; margin-top: 15px;"></p>
     </div>
 
     <!-- Dashboard Screen -->
@@ -73,7 +73,8 @@
     const SUPABASE_URL = 'https://uyypecjfolryxmrxyerj.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5eXBlY2pmb2xyeXhtcnh5ZXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMDQ0MzQsImV4cCI6MjEwNjY4MDQzNH0.eKmcvnL_s29ulbi5_lLtMVUL0k2wxPqu-27404yoSTI';
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // FIXED: Renamed to supabaseClient to prevent crashing
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const loginSec = document.getElementById('login-section');
     const dashSec = document.getElementById('dashboard-section');
@@ -85,15 +86,22 @@
       const email = document.getElementById('admin-email').value.trim();
       const password = document.getElementById('admin-password').value.trim();
       
-      errorMsg.innerText = "Authenticating...";
+      if (!email || !password) {
+        errorMsg.innerText = "Please enter both email and password.";
+        return;
+      }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      errorMsg.innerText = "Authenticating...";
+      errorMsg.style.color = "#333";
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: email,
         password: password
       });
 
       if (error) {
         errorMsg.innerText = error.message;
+        errorMsg.style.color = "red";
       } else {
         errorMsg.innerText = "";
         loginSec.classList.add('hidden');
@@ -106,8 +114,7 @@
     async function loadListings() {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading washrooms...</td></tr>';
 
-      // Explicitly pulling only the columns we know exist to prevent errors
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('listings')
         .select('host_category, business_name, name, phone, pin, addr, price, type, open, close')
         .order('id', { ascending: false });
@@ -125,7 +132,6 @@
       // 4. Build the HTML Table Rows
       tbody.innerHTML = ''; 
       data.forEach(item => {
-        // If commercial, show business name. If residential, show personal name.
         const displayName = item.host_category === 'commercial' && item.business_name 
           ? item.business_name 
           : item.name;
@@ -148,16 +154,17 @@
 
     // 5. Secure Logout
     async function logoutAdmin() {
-      await supabase.auth.signOut();
+      await supabaseClient.auth.signOut();
       dashSec.classList.add('hidden');
       loginSec.classList.remove('hidden');
       document.getElementById('admin-password').value = ''; 
       tbody.innerHTML = '';
+      errorMsg.innerText = '';
     }
 
     // 6. Keep admin logged in if they refresh the page
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
         loginSec.classList.add('hidden');
         dashSec.classList.remove('hidden');
