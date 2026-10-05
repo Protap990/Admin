@@ -6,22 +6,34 @@
   <title>Easy Wash - Admin Dashboard</title>
   <style>
     body { font-family: sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-    .container { max-width: 1000px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     h1 { color: #0056b3; margin-top: 0; }
     
     /* Login Section */
     #login-section { max-width: 400px; margin: 50px auto; text-align: center; }
     input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #0056b3; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    button { padding: 10px 15px; background: #0056b3; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; }
     button:hover { background: #004494; }
     
     /* Dashboard Section */
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
     th { background-color: #0056b3; color: white; }
     tr:nth-child(even) { background-color: #f9f9f9; }
-    .tag { font-size: 11px; padding: 3px 6px; border-radius: 4px; color: white; background: #6c757d; font-weight: bold; }
+    
+    .tag { font-size: 10px; padding: 3px 6px; border-radius: 4px; color: white; background: #6c757d; font-weight: bold; text-transform: uppercase; }
     .tag.commercial { background: #28a745; }
+    
+    /* Status Badges */
+    .status-pending { background: #ffc107; color: #000; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+    .status-approved { background: #28a745; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+    .status-rejected { background: #dc3545; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+    .action-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+    .btn-approve { background: #28a745; font-size: 11px; padding: 5px 8px; }
+    .btn-reject { background: #ffc107; color: black; font-size: 11px; padding: 5px 8px; }
+    .btn-delete { background: #dc3545; font-size: 11px; padding: 5px 8px; }
+    
     .hidden { display: none; }
     .logout-btn { width: auto; background: #dc3545; float: right; padding: 8px 16px; margin-bottom: 20px; }
   </style>
@@ -36,7 +48,7 @@
       <p>Sign in to manage listings</p>
       <input type="email" id="admin-email" placeholder="Admin Email" required>
       <input type="password" id="admin-password" placeholder="Password" required>
-      <button onclick="loginAdmin()">Secure Login</button>
+      <button onclick="loginAdmin()" style="width:100%;">Secure Login</button>
       <p id="error-msg" style="color: red; font-size: 14px; margin-top: 15px;"></p>
     </div>
 
@@ -49,31 +61,27 @@
         <thead>
           <tr>
             <th>Category</th>
-            <th>Host / Business Name</th>
-            <th>Phone</th>
-            <th>Address & PIN</th>
-            <th>Type</th>
-            <th>Price (₹)</th>
-            <th>Timings</th>
+            <th>Host / Business</th>
+            <th>Contact & Address</th>
+            <th>Type / Price</th>
+            <th>Access / Facilities</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="table-body">
-          <!-- Database rows will load here -->
+          <!-- Data loads here dynamically -->
         </tbody>
       </table>
     </div>
 
   </div>
 
-  <!-- Load Supabase JavaScript Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <script>
-    // 1. Link to your specific Supabase Engine using your provided keys
     const SUPABASE_URL = 'https://uyypecjfolryxmrxyerj.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5eXBlY2pmb2xyeXhtcnh5ZXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMDQ0MzQsImV4cCI6MjEwNjY4MDQzNH0.eKmcvnL_s29ulbi5_lLtMVUL0k2wxPqu-27404yoSTI';
-    
-    // FIXED: Renamed to supabaseClient to prevent crashing
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const loginSec = document.getElementById('login-section');
@@ -81,7 +89,6 @@
     const tbody = document.getElementById('table-body');
     const errorMsg = document.getElementById('error-msg');
 
-    // 2. Admin Login Logic
     async function loginAdmin() {
       const email = document.getElementById('admin-email').value.trim();
       const password = document.getElementById('admin-password').value.trim();
@@ -94,10 +101,7 @@
       errorMsg.innerText = "Authenticating...";
       errorMsg.style.color = "#333";
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
       if (error) {
         errorMsg.innerText = error.message;
@@ -110,14 +114,13 @@
       }
     }
 
-    // 3. Fetch Data from the Listings Table
     async function loadListings() {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading washrooms...</td></tr>';
 
       const { data, error } = await supabaseClient
         .from('listings')
-        .select('host_category, business_name, name, phone, pin, addr, price, type, open, close')
-        .order('id', { ascending: false });
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) {
         tbody.innerHTML = `<tr><td colspan="7" style="color:red;">Database Error: ${error.message}</td></tr>`;
@@ -129,30 +132,65 @@
         return;
       }
 
-      // 4. Build the HTML Table Rows
       tbody.innerHTML = ''; 
       data.forEach(item => {
-        const displayName = item.host_category === 'commercial' && item.business_name 
-          ? item.business_name 
-          : item.name;
-          
+        const displayName = item.host_category === 'commercial' && item.business_name ? item.business_name : item.name;
         const tagClass = item.host_category === 'commercial' ? 'tag commercial' : 'tag';
+        
+        let statusBadge = `<span class="status-pending">PENDING</span>`;
+        if (item.status === 'approved') statusBadge = `<span class="status-approved">APPROVED</span>`;
+        if (item.status === 'rejected') statusBadge = `<span class="status-rejected">REJECTED</span>`;
 
         const row = `<tr>
-          <td><span class="${tagClass}">${item.host_category.toUpperCase()}</span></td>
-          <td><b>${displayName}</b><br><small>${item.name}</small></td>
-          <td>${item.phone}</td>
-          <td>${item.addr}<br><b>PIN: ${item.pin}</b></td>
-          <td>${item.type}</td>
-          <td>₹${item.price}</td>
-          <td>${item.open} - ${item.close}</td>
+          <td><span class="${tagClass}">${item.host_category}</span></td>
+          <td><b>${displayName}</b><br><small>Host: ${item.name}</small></td>
+          <td>📞 ${item.phone}<br>📍 ${item.addr} (PIN: <b>${item.pin}</b>)</td>
+          <td>🚽 ${item.type}<br>💰 ₹${item.price}<br><small>🕒 ${item.open} - ${item.close}</small></td>
+          <td>👤 <b>${item.who}</b><br><small>Facilities: ${item.facilities ? item.facilities.join(', ') : 'None'}</small></td>
+          <td>${statusBadge}</td>
+          <td>
+            <div class="action-btns">
+              <button class="btn-approve" onclick="updateStatus('${item.id}', 'approved')">Approve</button>
+              <button class="btn-reject" onclick="updateStatus('${item.id}', 'rejected')">Reject</button>
+              <button class="btn-delete" onclick="deleteListing('${item.id}')">Delete</button>
+            </div>
+          </td>
         </tr>`;
         
         tbody.innerHTML += row;
       });
     }
 
-    // 5. Secure Logout
+    // Update Status Function (Approve/Reject)
+    async function updateStatus(id, newStatus) {
+      const { error } = await supabaseClient
+        .from('listings')
+        .update({ status: newStatus })
+        .eq('id', id);
+
+      if (error) {
+        alert("Error updating status: " + error.message);
+      } else {
+        loadListings(); // Refresh table
+      }
+    }
+
+    // Delete Listing Function
+    async function deleteListing(id) {
+      if (!confirm("Are you sure you want to completely delete this listing?")) return;
+
+      const { error } = await supabaseClient
+        .from('listings')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert("Error deleting listing: " + error.message);
+      } else {
+        loadListings(); // Refresh table
+      }
+    }
+
     async function logoutAdmin() {
       await supabaseClient.auth.signOut();
       dashSec.classList.add('hidden');
@@ -162,7 +200,6 @@
       errorMsg.innerText = '';
     }
 
-    // 6. Keep admin logged in if they refresh the page
     async function checkSession() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
